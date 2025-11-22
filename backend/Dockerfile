@@ -8,9 +8,9 @@ WORKDIR /app
 # Copy go.mod file first to leverage Docker cache
 COPY go.mod ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod file is not changed.
-# This command will also generate the go.sum file inside the container.
-RUN go mod download
+# Tidy up the dependencies. This will analyze the source code, download necessary modules,
+# and ensure go.mod and go.sum are synchronized with the actual code imports.
+RUN go mod tidy
 
 # Copy the source code into the container
 COPY . .

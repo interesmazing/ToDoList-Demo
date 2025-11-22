@@ -1,36 +1,28 @@
-# Stage 1: Build the application
-# Use the official Golang image as a builder.
+# Stage 1: Build the Go application
 FROM golang:1.21-alpine AS builder
 
-# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go.mod file first to leverage Docker cache
-COPY go.mod ./
-
-# Tidy up the dependencies. This will analyze the source code, download necessary modules,
-# and ensure go.mod and go.sum are synchronized with the actual code imports.
-RUN go mod tidy
-
-# Copy the source code into the container
+# Copy all source code first. This is less cache-efficient but more robust.
 COPY . .
 
-# Build the Go app
-# CGO_ENABLED=0 is important for creating a static binary that doesn't rely on C libraries.
-# This makes the resulting image smaller and more portable.
+# Run go mod tidy to ensure go.mod and go.sum are in sync with the code.
+RUN go mod tidy
+
+# Build the application
+# CGO_ENABLED=0 is important for a static binary.
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-# Stage 2: Create the final, minimal image
-# Use a minimal alpine image for a small footprint
+# Stage 2: Create a minimal final image
 FROM alpine:latest
 
 WORKDIR /root/
 
-# Copy the Pre-built binary file from the previous stage
+# Copy the built binary from the builder stage
 COPY --from=builder /app/main .
 
-# Expose port 8080 to the outside world
-EXPOSE 8080
+# Expose port 8081 for the backend service
+EXPOSE 8081
 
 # Command to run the executable
 CMD ["./main"]

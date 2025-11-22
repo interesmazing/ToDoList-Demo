@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: todo_postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: todolist
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # You can connect to the database from your host machine on port 5432 if needed
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d todolist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Go Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: todo_backend_go
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # This connection string is used by the Go application to connect to the database
+      DATABASE_URL: "postgres://user:password@db:5432/todolist?sslmode=disable"
+    ports:
+      # Exposes the backend API on port 8081 of the host machine
+      - "8081:8080"
+    volumes:
+      - ./backend:/app
+
+  # Vue.js Frontend Service (served by Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: todo_frontend_vue
+    restart: always
+    ports:
+      # Exposes the frontend application on port 8080 of the host machine
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local

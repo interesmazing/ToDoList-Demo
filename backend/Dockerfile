@@ -5,10 +5,11 @@ FROM golang:1.21-alpine AS builder
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
+# Copy go.mod file first to leverage Docker cache
+COPY go.mod ./
 
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+# Download all dependencies. Dependencies will be cached if the go.mod file is not changed.
+# This command will also generate the go.sum file inside the container.
 RUN go mod download
 
 # Copy the source code into the container
@@ -20,7 +21,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # Stage 2: Create the final, minimal image
-# Use a scratch image or a minimal alpine image for a small footprint
+# Use a minimal alpine image for a small footprint
 FROM alpine:latest
 
 WORKDIR /root/
